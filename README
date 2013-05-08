@@ -1,0 +1,11 @@
+
+Please type "make" first
+
+ocm_test : it's normal version with 32bit I/O access
+ocm_test_O3 : it use compiler optimization to improve 15% throughput
+ocm_test_w64 : it's 64bit I/O and it show 2.3x throughput
+
+pc_ocm: it's reference design for Producer and Consumer
+TestFunction2: it's reference design and base on Hyousiung's previous design
+
+

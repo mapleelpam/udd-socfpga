@@ -33,11 +33,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <ctype.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <ctype.h>
-#include <termios.h>
 #include <termios.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -50,24 +48,22 @@
 #define MAP_MASK (MAP_SIZE - 1)
 
 const unsigned int LOOP=10;
-unsigned long mem[0xffff];
-unsigned int global_mem = 0;
+uint64_t mem[0xffff];
 
 int main()
 {
-    int fd = 0;
+    int fd = 0, loop = 0;
     void *map_base = NULL, *virt_addr = NULL; 
 
     struct timeval tpstart,tpend; 
     float timeuse; 
 
-    const uint32_t ALT_H2F_BASE 	   = 0xC0000000;
-    const uint32_t ALT_H2F_OCM_OFFSET	   = 0x00000000;
+    const uint64_t ALT_H2F_BASE 	   = 0xC0000000;
+    const uint64_t ALT_H2F_OCM_OFFSET	   = 0x00000000;
 
     off_t target = ALT_H2F_BASE;
     unsigned long read_result, writeval;
     int idx = 0;
-    int loop = 0;
 
     if((fd = open("/dev/mem", O_RDWR | O_SYNC)) == -1) 
         FATAL;
@@ -84,11 +80,11 @@ int main()
 
     gettimeofday(&tpstart,NULL); 
     for( loop = 0 ; loop < LOOP; loop ++ ) {
-	    for( idx = 0 ; idx < 0xffff; idx ++ ) {
+	    for( idx = 0 ; idx < 0xffff/2; idx ++ ) {
 		    writeval = idx;
-		    void* access_addr = virt_addr + ALT_H2F_OCM_OFFSET + idx*4;
-		    *((uint32_t*) (access_addr)) = writeval;
-		    read_result = *((uint32_t*) access_addr);
+		    void* access_addr = virt_addr + ALT_H2F_OCM_OFFSET + idx*8;
+		    *((uint64_t*) (access_addr)) = writeval;
+		    read_result = *((uint64_t*) access_addr);
 		    mem[idx] = read_result;
 		    if( read_result != writeval ) {
 			    printf(" error in r/w \n");
@@ -100,43 +96,39 @@ int main()
     gettimeofday(&tpend,NULL); 
     timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+ tpend.tv_usec-tpstart.tv_usec; 
     timeuse/=1000000; 
-    printf( "Used For 64K ROM Access (Read+Write) Time:%f  throuput %f Mbsp\n", timeuse,(65536.0*32.0*8.0*LOOP)/timeuse/1000.0/1000.0); 
+    printf( "Used For 64K ROM Access (Read+Write) Time:%f  throuput %f Mbsp\n", timeuse,((65536.0/2)*64.0*8.0*LOOP)/timeuse/1000.0/1000.0); 
 
     gettimeofday(&tpstart,NULL); 
     for( loop = 0 ; loop < LOOP; loop ++ ) {
-	    for( idx = 0 ; idx < 0xffff; idx ++ ) {
+	    for( idx = 0 ; idx < 0xffff/2; idx ++ ) {
 		    writeval = idx;
-		    void* access_addr = virt_addr + ALT_H2F_OCM_OFFSET + idx*4;
-		    *((uint32_t*) (access_addr)) = writeval;
+		    void* access_addr = virt_addr + ALT_H2F_OCM_OFFSET + idx*8;
+		    *((uint64_t*) (access_addr)) = writeval;
 	    }
     }
     gettimeofday(&tpend,NULL); 
     
     timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+ tpend.tv_usec-tpstart.tv_usec; 
     timeuse/=1000000; 
-    printf( "Used For 64K ROM Access (Write Only) Time:%f  throuput %f Mbsp\n", timeuse,(65536.0*32.0*8.0*LOOP)/timeuse/1000.0/1000.0); 
+    printf( "Used For 64K ROM Access (Write Only) Time:%f  throuput %f Mbsp\n", timeuse,(65536.0/2*64.0*8.0*LOOP)/timeuse/1000.0/1000.0); 
 
     gettimeofday(&tpstart,NULL); 
-
-	// it's too fast, i need to execute more 
     for( loop = 0 ; loop < LOOP; loop ++ ) {
-	    for( idx = 0 ; idx < 0xffff; idx ++ ) {
+	    for( idx = 0 ; idx < 0xffff/2; idx ++ ) {
 		    writeval = idx;
-		    void* access_addr = virt_addr + ALT_H2F_OCM_OFFSET +idx*4;
-		    read_result = *((uint32_t*) access_addr);
-		    //mem[idx] = read_result;
-		    global_mem = read_result;
+		    void* access_addr = virt_addr + ALT_H2F_OCM_OFFSET +idx*8;
+		    read_result = *((uint64_t*) access_addr);
+		    mem[idx] = read_result;
 	    }
     }
     gettimeofday(&tpend,NULL); 
     
     timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+ tpend.tv_usec-tpstart.tv_usec; 
     timeuse/=1000000; 
-    printf( "Used For 64K ROM Access (Read Only) Time:%f  throuput %f Mbsp\n", timeuse,(65536.0*32.0*8.0*LOOP)/timeuse/1000.0/1000.0); 
+    printf( "Used For 64K ROM Access (Read Only) Time:%f  throuput %f Mbsp\n", timeuse,(65536.0/2*64.0*8.0*LOOP)/timeuse/1000.0/1000.0); 
 
 
-
-    if(munmap(map_base, MAP_SIZE) == -1) FATAL;
+	if(munmap(map_base, MAP_SIZE) == -1) FATAL;
     close(fd);
 
     return;
